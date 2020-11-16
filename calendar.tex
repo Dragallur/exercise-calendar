@@ -1,0 +1,121 @@
+\documentclass{article}
+\usepackage[a4paper, total={8.5in, 11in}]{geometry}
+\usepackage{csvsimple}
+\usepackage{tikz}
+\usetikzlibrary{calendar}
+\usepackage{pgfcalendar}
+\usepackage{expl3}
+
+% sample csv file
+\begin{filecontents*}{cal1.csv}
+2020-01-01;2020-01-10;2020-01-03
+2020-01-02;2020-01-10;2020-01-05;2020-01-25
+2020-01-06;2020-01-16;2020-01-03
+2020-01-08;2020-01-09;2020-01-23
+\end{filecontents*}
+
+\newlength{\daywidth}
+\setlength{\daywidth}{5.0ex} %size of box around day
+\newlength{\dayinterval}
+\setlength{\dayinterval}{6.3ex} %space between days
+\newlength{\dayitemheight}
+\setlength{\dayitemheight}{0.8ex}
+\newlength{\dayiteminterval}
+\setlength{\dayiteminterval}{0.2ex}
+\newlength{\monthwidth}
+\setlength{\monthwidth}{45ex}
+
+\ExplSyntaxOn
+
+\seq_new:N \g_doc_dates_seq
+
+\cs_set:Npn \doc_read_file:n #1 {
+  \ior_open:Nn \g_tmpa_ior {#1}
+  \seq_gclear:N \g_doc_dates_seq
+  \ior_str_map_inline:Nn \g_tmpa_ior {
+    \str_set:Nx \l_tmpa_str {\tl_trim_spaces:n {##1}}
+    \str_if_empty:NF \l_tmpa_str {
+      \seq_gput_right:NV \g_doc_dates_seq \l_tmpa_str
+    }
+  }
+  \ior_close:N \g_tmpa_ior
+}
+
+
+\cs_set:Npn \doc_draw_command:nnn #1#2#3 {
+  \node[#1,#2] at (#3.north) {};
+}
+
+\cs_generate_variant:Nn \regex_split:nnN {nVN}
+\cs_generate_variant:Nn \doc_draw_command:nnn {xnx}
+
+\newcommand{\drawfilerow}[3]{
+  \iow_term:x {show: \fp_eval:n {-(#2 + 0.5) * (1.0ex)}pt}
+  \int_compare:nT {1 <= #2 <= \seq_count:N \g_doc_dates_seq} {
+    \tl_set:Nx \l_tmpa_tl {\seq_item:Nn \g_doc_dates_seq {#2}}
+    \regex_split:nVN {;} \l_tmpa_tl \l_tmpa_seq
+    \seq_map_inline:Nn \l_tmpa_seq {
+      \str_set:Nx \l_tmpa_str {\tl_trim_spaces:n {##1}}
+      \str_if_empty:NF \l_tmpa_str {
+        \doc_draw_command:xnx {
+          minimum~width=0.98\daywidth,
+          minimum~height=\dayitemheight,
+          yshift=\fp_eval:n {-(#2 - 1) * (\dayitemheight + \dayiteminterval) -0.2pt}pt,
+          anchor=north,
+          inner~sep=0pt,
+          outer~sep=0pt
+        } {fill=#3} {#1-\str_use:N \l_tmpa_str};
+      }
+    }
+  }
+}
+
+\newcommand{\readcalendarfile}[1]{
+  \doc_read_file:n {#1}
+}
+
+\ExplSyntaxOff
+
+\begin{document}
+
+% read "csv" file
+\readcalendarfile{cal.csv}
+
+\begin{tikzpicture}[every calendar/.style={
+                    week list, 
+                    month label above centered, 
+                    day xshift=\dayinterval, 
+                    day yshift=\dayinterval,
+                    day code = { 
+                        \node[minimum width=\daywidth, 
+                        minimum height=\daywidth,
+                        name=\pgfcalendarsuggestedname,
+                        draw=black] {};
+                    }
+                    }]
+	\calendar (mycal) [dates=2020-01-01 to 2020-01-last];
+	\calendar (mycal) [dates=2020-02-01 to 2020-02-last, xshift=\monthwidth];
+	\calendar (mycal) [dates=2020-03-01 to 2020-03-last, xshift=2*\monthwidth];
+
+	\calendar (mycal) [dates=2020-04-01 to 2020-04-last, yshift=-\monthwidth];
+	\calendar (mycal) [dates=2020-05-01 to 2020-05-last, xshift=\monthwidth, yshift=-\monthwidth];
+	\calendar (mycal) [dates=2020-06-01 to 2020-06-last, xshift=2*\monthwidth, yshift=-\monthwidth];
+
+   	\calendar (mycal) [dates=2020-07-01 to 2020-07-last, yshift=-2*\monthwidth];
+	\calendar (mycal) [dates=2020-08-01 to 2020-08-last, xshift=\monthwidth, yshift=-2*\monthwidth];
+	\calendar (mycal) [dates=2020-09-01 to 2020-09-last, xshift=2*\monthwidth, yshift=-2*\monthwidth];
+
+   	\calendar (mycal) [dates=2020-10-01 to 2020-10-last, yshift=-3*\monthwidth];
+	\calendar (mycal) [dates=2020-11-01 to 2020-11-last, xshift=\monthwidth, yshift=-3*\monthwidth];
+	\calendar (mycal) [dates=2020-12-01 to 2020-12-last, xshift=2*\monthwidth, yshift=-3*\monthwidth];
+ %use contents from "csv" file
+    \drawfilerow{mycal}{1}{red}; %cardio
+    \drawfilerow{mycal}{2}{blue}; %strength
+    \drawfilerow{mycal}{3}{green}; %rope jumping
+    \drawfilerow{mycal}{4}{orange}; %bouldering
+    \drawfilerow{mycal}{5}{brown}; %other
+\end{tikzpicture}
+
+
+\end{document}
+
